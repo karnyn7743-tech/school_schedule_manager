@@ -30,7 +30,6 @@ class NotificationService {
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    // تسجيل القنوات الصوتية الجديدة في نظام أندرويد
     await _createNotificationChannels();
   }
 
@@ -40,7 +39,6 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidNotificationPlugin != null) {
-      // قناة جرس البداية (تم تغيير المعرف إلى school_start_bell_v2 لإجبار النظام على ربط الصوت)
       const AndroidNotificationChannel startChannel = AndroidNotificationChannel(
         'school_start_bell_v2',
         'أجراس بداية الحصص',
@@ -50,7 +48,6 @@ class NotificationService {
         playSound: true,
       );
 
-      // قناة جرس النهاية
       const AndroidNotificationChannel endChannel = AndroidNotificationChannel(
         'school_end_bell_v2',
         'أجراس نهاية الحصص',
@@ -65,15 +62,14 @@ class NotificationService {
     }
   }
 
-  // دالة جدولة الحصص بالأصوات المخصصة
   Future<void> scheduleClassPeriodAlarm({
     required int id,
     required String title,
     required String body,
-    required int dayOfWeek, // 1: الإثنين ... 7: الأحد
+    required int dayOfWeek,
     required int hour,
     required int minute,
-    bool isStart = true, // تحديد الجرس (بداية أم نهاية)
+    bool isStart = true, // قيمة افتراضية اختيارية حتى لا ينهار أي استدعاء قديم
   }) async {
     final String soundName = isStart ? 'bell_start' : 'bell_end';
     final String channelId = isStart ? 'school_start_bell_v2' : 'school_end_bell_v2';
