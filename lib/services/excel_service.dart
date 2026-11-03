@@ -70,6 +70,9 @@ class ExcelService {
       final sheet = excel.tables[firstSheet];
 
       if (sheet != null) {
+        // توليد معرف أساسي آمن من الوقت الحالي لا يتجاوز نطاق 32-bit
+        final int baseId = (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 10000;
+
         // البدء من الصف الثاني لتخطي الترويسة
         for (int i = 1; i < sheet.maxRows; i++) {
           final row = sheet.rows[i];
@@ -88,7 +91,7 @@ class ExcelService {
 
           imported.add(
             ClassPeriod(
-              id: DateTime.now().millisecondsSinceEpoch + i,
+              id: (baseId * 100) + i,
               title: title,
               startHour: startH,
               startMinute: startM,
@@ -104,4 +107,3 @@ class ExcelService {
     return null;
   }
 }
-
