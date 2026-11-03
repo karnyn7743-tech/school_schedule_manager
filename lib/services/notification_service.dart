@@ -39,25 +39,39 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidNotificationPlugin != null) {
-      // قناة جرس بداية الحصص
-      const AndroidNotificationChannel startChannel = AndroidNotificationChannel(
-        'school_start_bell_v2',
-        'أجراس بداية الحصص',
-        description: 'تنبيهات صوتية خاصة ببدء الحصص المدرسية',
-        importance: Importance.max,
-        sound: RawResourceAndroidNotificationSound('bell_start'),
-        playSound: true,
-      );
+      try {
+        // قناة جرس بداية الحصص
+        const AndroidNotificationChannel startChannel = AndroidNotificationChannel(
+          'school_start_bell_v2',
+          'أجراس بداية الحصص',
+          description: 'تنبيهات صوتية خاصة ببدء الحصص المدرسية',
+          importance: Importance.max,
+          sound: RawResourceAndroidNotificationSound('bell_start'),
+          playSound: true,
+        );
 
-      // قناة جرس نهاية الحصص
-      const AndroidNotificationChannel endChannel = AndroidNotificationChannel(
-        'school_end_bell_v2',
-        'أجراس نهاية الحصص',
-        description: 'تنبيهات صوتية خاصة بانتهاء الحصص المدرسية',
-        importance: Importance.max,
-        sound: RawResourceAndroidNotificationSound('bell_end'),
-        playSound: true,
-      );
+        // قناة جرس نهاية الحصص
+        const AndroidNotificationChannel endChannel = AndroidNotificationChannel(
+          'school_end_bell_v2',
+          'أجراس نهاية الحصص',
+          description: 'تنبيهات صوتية خاصة بانتهاء الحصص المدرسية',
+          importance: Importance.max,
+          sound: RawResourceAndroidNotificationSound('bell_end'),
+          playSound: true,
+        );
+
+        await androidNotificationPlugin.createNotificationChannel(startChannel);
+        await androidNotificationPlugin.createNotificationChannel(endChannel);
+      } catch (_) {
+        // قناة احتياطية في حال تعذر تسجيل الصوت المخصص
+        const AndroidNotificationChannel defaultPeriodsChannel = AndroidNotificationChannel(
+          'school_default_channel',
+          'تنبيهات الحصص المدرسية',
+          importance: Importance.max,
+          playSound: true,
+        );
+        await androidNotificationPlugin.createNotificationChannel(defaultPeriodsChannel);
+      }
 
       // قناة المهام والأعمال المدرسية
       const AndroidNotificationChannel tasksChannel = AndroidNotificationChannel(
@@ -67,9 +81,6 @@ class NotificationService {
         importance: Importance.high,
         playSound: true,
       );
-
-      await androidNotificationPlugin.createNotificationChannel(startChannel);
-      await androidNotificationPlugin.createNotificationChannel(endChannel);
       await androidNotificationPlugin.createNotificationChannel(tasksChannel);
     }
   }
@@ -88,15 +99,27 @@ class NotificationService {
     final String channelId = isStart ? 'school_start_bell_v2' : 'school_end_bell_v2';
     final String channelName = isStart ? 'أجراس بداية الحصص' : 'أجراس نهاية الحصص';
 
-    final androidDetails = AndroidNotificationDetails(
-      channelId,
-      channelName,
-      importance: Importance.max,
-      priority: Priority.high,
-      sound: RawResourceAndroidNotificationSound(soundName),
-      playSound: true,
-      enableVibration: true,
-    );
+    AndroidNotificationDetails androidDetails;
+    try {
+      androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        importance: Importance.max,
+        priority: Priority.high,
+        sound: RawResourceAndroidNotificationSound(soundName),
+        playSound: true,
+        enableVibration: true,
+      );
+    } catch (_) {
+      androidDetails = const AndroidNotificationDetails(
+        'school_default_channel',
+        'تنبيهات الحصص المدرسية',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+    }
 
     final notificationDetails = NotificationDetails(
       android: androidDetails,
@@ -107,17 +130,41 @@ class NotificationService {
 
     final scheduledDate = _nextInstanceOfDayTime(dayOfWeek, hour, minute);
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-    );
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    } catch (_) {
+      // محاولة احتياطية ثانية بدون مورد الصوت لضمان نجاح الجدولة والاستيراد
+      final fallbackDetails = const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'school_default_channel',
+          'تنبيهات الحصص المدرسية',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        ),
+      );
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        fallbackDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    }
   }
 
   // جدولة تنبيه لمهمة محددة بمرونة تامة
