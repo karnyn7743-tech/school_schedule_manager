@@ -1,0 +1,83 @@
+name: Build School App (Android & iOS)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # يتيح لك زر تشغيل البناء يدوياً من واجهة GitHub
+
+jobs:
+  # ==========================================
+  # 1. مهمة بناء تطبيق الأندرويد (APK)
+  # ==========================================
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java Development Kit (JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter Environment
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Android Release APK
+        run: flutter build apk --release
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchoolApp-Android-Release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
+
+  # ==========================================
+  # 2. مهمة بناء تطبيق الآيفون (iOS)
+  # ==========================================
+  build-ios:
+    name: Build iOS (No-codesign)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter Environment
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # بناء ملفات iOS بدون اشتراك حساب مطور أبل مدفوع (تجهيز الـ Runner)
+      - name: Build iOS Application
+        run: flutter build ios --release --no-codesign
+
+      # ضغط مجلد حزمة التطبيق لسهولة تنزيلها وتثبيتها عبر أدوات المطورين
+      - name: Compress iOS App
+        run: |
+          cd build/ios/iphoneos
+          zip -r SchoolApp-iOS.zip Runner.app
+
+      - name: Upload iOS App
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchoolApp-iOS-Release
+          path: build/ios/iphoneos/SchoolApp-iOS.zip
+          retention-days: 7
