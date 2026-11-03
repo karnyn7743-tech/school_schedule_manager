@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
+import '../models/task_item_model.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -39,6 +40,7 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidNotificationPlugin != null) {
+      // قناة جرس بداية الحصص
       const AndroidNotificationChannel startChannel = AndroidNotificationChannel(
         'school_start_bell_v2',
         'أجراس بداية الحصص',
@@ -48,6 +50,7 @@ class NotificationService {
         playSound: true,
       );
 
+      // قناة جرس نهاية الحصص
       const AndroidNotificationChannel endChannel = AndroidNotificationChannel(
         'school_end_bell_v2',
         'أجراس نهاية الحصص',
@@ -57,11 +60,22 @@ class NotificationService {
         playSound: true,
       );
 
+      // قناة المهام والأعمال المدرسية
+      const AndroidNotificationChannel tasksChannel = AndroidNotificationChannel(
+        'school_tasks_channel',
+        'تنبيهات المهام والأعمال',
+        description: 'تنبيهات خاصة بالمهام والأنشطة المدرسية',
+        importance: Importance.high,
+        playSound: true,
+      );
+
       await androidNotificationPlugin.createNotificationChannel(startChannel);
       await androidNotificationPlugin.createNotificationChannel(endChannel);
+      await androidNotificationPlugin.createNotificationChannel(tasksChannel);
     }
   }
 
+  // جدولة جرس الحصة الأسبوعي
   Future<void> scheduleClassPeriodAlarm({
     required int id,
     required String title,
@@ -69,7 +83,7 @@ class NotificationService {
     required int dayOfWeek,
     required int hour,
     required int minute,
-    bool isStart = true, // قيمة افتراضية اختيارية حتى لا ينهار أي استدعاء قديم
+    bool isStart = true,
   }) async {
     final String soundName = isStart ? 'bell_start' : 'bell_end';
     final String channelId = isStart ? 'school_start_bell_v2' : 'school_end_bell_v2';
@@ -105,6 +119,49 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );
+  }
+
+  // جدولة تنبيه لمهمة محددة
+  Future<void> scheduleTaskAlarm(TaskItem task) async {
+    if (!task.hasReminder) return;
+
+    final tz.TZDateTime scheduledDate = tz.TZDateTime.from(task.reminderTime, tz.local);
+    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+    const androidDetails = AndroidNotificationDetails(
+      'school_tasks_channel',
+      'تنبيهات المهام والأعمال',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      task.id,
+      '📋 تذكير بمهمة: ${task.title}',
+      task.description.isNotEmpty ? task.description : 'حان موعد إنجاز المهمة المدرسية',
+      scheduledDate,
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  // إلغاء تنبيه فردي برقم المعرّف
+  Future<void> cancelAlarm(int id) async {
+    await flutterLocalNotificationsPlugin.cancel(id);
+  }
+
+  // إلغاء كافة التنبيهات المجدولة
+  Future<void> cancelAllAlarms() async {
+    await flutterLocalNotificationsPlugin.cancelAll();
   }
 
   tz.TZDateTime _nextInstanceOfDayTime(int dayOfWeek, int hour, int minute) {
