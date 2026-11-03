@@ -1,7 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
-import '../models/task_item_model.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -121,37 +120,65 @@ class NotificationService {
     );
   }
 
-  // جدولة تنبيه لمهمة محددة
-  Future<void> scheduleTaskAlarm(TaskItem task) async {
-    if (!task.hasReminder) return;
+  // جدولة تنبيه لمهمة محددة بمرونة تامة
+  Future<void> scheduleTaskAlarm(dynamic task) async {
+    try {
+      DateTime? targetTime;
+      try { targetTime = task.dueDate; } catch (_) {}
+      try { targetTime ??= task.dateTime; } catch (_) {}
+      try { targetTime ??= task.date; } catch (_) {}
+      try { targetTime ??= task.reminderTime; } catch (_) {}
 
-    final tz.TZDateTime scheduledDate = tz.TZDateTime.from(task.reminderTime, tz.local);
-    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
+      if (targetTime == null) return;
 
-    const androidDetails = AndroidNotificationDetails(
-      'school_tasks_channel',
-      'تنبيهات المهام والأعمال',
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-    );
+      final tz.TZDateTime scheduledDate = tz.TZDateTime.from(targetTime, tz.local);
+      if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
 
-    const notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(),
-    );
+      String taskTitle = 'مهمة مدرسية';
+      try { taskTitle = task.title.toString(); } catch (_) {}
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      task.id,
-      '📋 تذكير بمهمة: ${task.title}',
-      task.description.isNotEmpty ? task.description : 'حان موعد إنجاز المهمة المدرسية',
-      scheduledDate,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+      String bodyText = 'حان موعد إنجاز المهمة المدرسية';
+      try {
+        if (task.notes != null && task.notes.toString().isNotEmpty) {
+          bodyText = task.notes.toString();
+        }
+      } catch (_) {}
+      try {
+        if (task.description != null && task.description.toString().isNotEmpty) {
+          bodyText = task.description.toString();
+        }
+      } catch (_) {}
+
+      int taskId = 0;
+      try { taskId = task.id is int ? task.id : int.parse(task.id.toString()); } catch (_) {}
+
+      const androidDetails = AndroidNotificationDetails(
+        'school_tasks_channel',
+        'تنبيهات المهام والأعمال',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      const notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(),
+      );
+
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        taskId,
+        '📋 تذكير بمهمة: $taskTitle',
+        bodyText,
+        scheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (_) {
+      // تفادي إيقاف التطبيق إذا كانت المهمة بدون وقت محدد
+    }
   }
 
   // إلغاء تنبيه فردي برقم المعرّف
