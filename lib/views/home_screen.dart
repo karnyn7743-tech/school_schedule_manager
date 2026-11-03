@@ -51,8 +51,9 @@ class _HomeScreenState extends State<HomeScreen>
           for (final dayConfig in schoolDays) {
             if (!dayConfig.isEnabled) continue;
 
-            final int startId = period.id + dayConfig.dayOfWeek;
-            final int endId = period.id + dayConfig.dayOfWeek + 100000;
+            // توليد معرفات آمنة وصغيرة تقع بدقة ضمن حدود الـ 32-bit
+            final int startId = ((period.id % 100000) * 10) + dayConfig.dayOfWeek;
+            final int endId = startId + 500000;
 
             await NotificationService().scheduleClassPeriodAlarm(
               id: startId,
