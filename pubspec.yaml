@@ -46,8 +46,6 @@ flutter:
   uses-material-design: true
 
   # مسارات الأصول والملفات الجاهزة
-    assets:
+  assets:
     - assets/icons/
     - assets/templates/schedule_template.xlsx
-
-
