@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'services/activation_service.dart';
 import 'services/notification_service.dart';
+import 'views/activation/activation_screen.dart';
 import 'views/home_screen.dart';
 
 void main() async {
@@ -10,11 +12,16 @@ void main() async {
   // تهيئة خدمة التنبيهات الدقيقة والمناطق الزمنية
   await NotificationService().init();
 
-  runApp(const SchoolApp());
+  // فحص حالة التفعيل للجهاز الحالي
+  final bool isActivated = await ActivationService.isAppActivated();
+
+  runApp(SchoolApp(isActivated: isActivated));
 }
 
 class SchoolApp extends StatelessWidget {
-  const SchoolApp({super.key});
+  final bool isActivated;
+
+  const SchoolApp({super.key, required this.isActivated});
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +61,8 @@ class SchoolApp extends StatelessWidget {
         ),
       ),
 
-      // الشاشة الرئيسية
-      home: const HomeScreen(),
+      // توجيه المستخدم لشاشة التفعيل إذا لم يكن الجهاز مفعلاً، أو للشاشة الرئيسية إن كان مفعلاً
+      home: isActivated ? const HomeScreen() : const ActivationScreen(),
     );
   }
 }
