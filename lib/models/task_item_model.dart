@@ -7,6 +7,7 @@ class TaskItem {
   final String? notes;
   final TaskRecurrence recurrence;
   bool isCompleted;
+  bool isEmergency; // ⬅️ [إضافة جديدة]: حقل تحديد مهمة الطوارئ
 
   TaskItem({
     required this.id,
@@ -15,6 +16,7 @@ class TaskItem {
     this.notes,
     this.recurrence = TaskRecurrence.none,
     this.isCompleted = false,
+    this.isEmergency = false, // ⬅️ [إضافة جديدة]: القيمة الافتراضية
   });
 
   Map<String, dynamic> toMap() {
@@ -25,6 +27,7 @@ class TaskItem {
       'notes': notes,
       'recurrence': recurrence.index,
       'isCompleted': isCompleted,
+      'isEmergency': isEmergency, // ⬅️ [إضافة جديدة]: حفظ القيمة
     };
   }
 
@@ -36,7 +39,8 @@ class TaskItem {
       notes: map['notes'] as String?,
       recurrence: TaskRecurrence.values[map['recurrence'] as int? ?? 0],
       isCompleted: map['isCompleted'] as bool? ?? false,
+      // ⬇️ [إضافة جديدة]: قراءة القيمة، وإذا لم تكن موجودة (مهام قديمة) نضع false
+      isEmergency: map['isEmergency'] as bool? ?? false, 
     );
   }
 }
-
