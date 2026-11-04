@@ -36,7 +36,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
     });
   }
 
-  // جدولة كل الحصص على أيام الدراسة المعتمدة
+  // جدولة كل المهام المجدولة على أيام العمل المعتمدة
   Future<void> _rescheduleAllAlarms() async {
     for (final period in _periods) {
       for (final dayConfig in _schoolDays) {
@@ -49,7 +49,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
           period.id, dayConfig.dayOfWeek,
         );
 
-        // منبه بداية الحصة
+        // منبه بداية المهمة
         await NotificationService().scheduleClassPeriodAlarm(
           id: startId,
           title: '🔔 بداية: ${period.title}',
@@ -60,7 +60,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
           isStart: true, // ⬅️ تم التأكيد صراحةً
         );
 
-        // منبه نهاية الحصة
+        // منبه نهاية المهمة
         await NotificationService().scheduleClassPeriodAlarm(
           id: endId,
           title: '🔕 انتهاء: ${period.title}',
@@ -74,7 +74,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
     }
   }
 
-  // إضافة أو تعديل حصة
+  // إضافة أو تعديل مهمة
   Future<void> openAddEditDialog([ClassPeriod? period]) async {
     final result = await showDialog<ClassPeriod>(
       context: context,
@@ -95,7 +95,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
     }
   }
 
-  // حذف حصة وإلغاء منبهاتها
+  // حذف مهمة وإلغاء منبهاتها
   Future<void> _deletePeriod(ClassPeriod period) async {
     for (final day in _schoolDays) {
       await NotificationService().cancelAlarm(
@@ -134,7 +134,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
             Icon(Icons.calendar_today_outlined, size: 70, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             const Text(
-              'لا توجد حصص مضافة حتى الآن',
+              'لا توجد مهام مضافة حتى الآن',
               style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
