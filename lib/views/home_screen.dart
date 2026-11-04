@@ -6,6 +6,7 @@ import '../services/excel_service.dart';
 import '../services/local_storage_service.dart';
 import '../services/notification_service.dart';
 import '../models/class_period_model.dart';
+import '../models/task_item_model.dart'; // ⬅️ [إضافة جديدة]
 import '../core/constants/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -41,8 +42,96 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  // استيراد جدول المهام المجدولة من ملف إكسل وتفعيله فوراً
-  Future<void> _handleImportExcel() async {
+  // ⬇️ [تعديل]: دالة تظهر نافذة اختيار نوع الاستيراد ⬇️
+  Future<void> _showImportSelectionDialog() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'ماذا تريد أن تستورد؟',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_active_outlined, color: Colors.blue),
+                title: const Text('أجراس الحصص'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _importScheduleData();
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.assignment_outlined, color: Colors.orange),
+                title: const Text('جدول الأعمال والمهام'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _importTasksData();
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ⬇️ [تعديل]: دالة تظهر نافذة اختيار نوع التصدير ⬇️
+  Future<void> _showExportSelectionDialog() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'ماذا تريد أن تصدر؟',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications_active_outlined, color: Colors.blue),
+                title: const Text('تصدير أجراس الحصص'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _exportScheduleData();
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.assignment_outlined, color: Colors.orange),
+                title: const Text('تصدير جدول الأعمال والمهام'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _exportTasksData();
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // استيراد جدول الحصص المجدولة من ملف إكسل وتفعيله فوراً (نفس الكود السابق)
+  Future<void> _importScheduleData() async {
     try {
       final List<ClassPeriod>? imported = await ExcelService.importSchedule();
       if (imported != null && imported.isNotEmpty) {
@@ -50,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen>
         final oldPeriods = await LocalStorageService.loadPeriods();
         final schoolDays = await LocalStorageService.loadSchoolDays();
 
-        // إلغاء معرفات أجراس الجدول السابق فقط، مع إبقاء تنبيهات المهام.
+        // إلغاء معرفات أجراس الجدول السابق فقط، مع إبقاء تنبيهات الحصص.
         for (final oldPeriod in oldPeriods) {
           for (var day = DateTime.monday; day <= DateTime.sunday; day++) {
             await NotificationService().cancelAlarm(
@@ -71,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen>
           }
         }
 
-        // جدولة التنبيهات للمهام المستوردة
+        // جدولة التنبيهات للحصص المستوردة
         for (final period in imported) {
           for (final dayConfig in schoolDays) {
             if (!dayConfig.isEnabled) continue;
@@ -106,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen>
 
         await LocalStorageService.savePeriods(imported);
 
-        // تحديث واجهة المهام المجدولة
+        // تحديث واجهة أجراس الحصص
         _periodsKey.currentState?.loadScheduleData();
 
         if (mounted) {
@@ -130,13 +219,58 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  // تصدير جدول المهام الحالي إلى إكسل
-  Future<void> _handleExportExcel() async {
+  // ⬇️ [إضافة جديدة]: استيراد المهام ⬇️
+  Future<void> _importTasksData() async {
+    try {
+      final List<TaskItem>? imported = await ExcelService.importTasks();
+      if (imported != null && imported.isNotEmpty) {
+        // إلغاء تنبيهات المهام القديمة
+        final oldTasks = await LocalStorageService.loadTasks();
+        for (final oldTask in oldTasks) {
+          await NotificationService().cancelAlarm(oldTask.id);
+        }
+
+        // حفظ المهام الجديدة
+        await LocalStorageService.saveTasks(imported);
+
+        // جدولة المهام الجديدة
+        for (final task in imported) {
+          if (!task.isCompleted) {
+            await NotificationService().scheduleTaskAlarm(task);
+          }
+        }
+
+        // تحديث واجهة المهام
+        _tasksKey.currentState?.loadTasksData();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم استيراد ${imported.length} مهمة وجدولة تنبيهاتها بنجاح!'),
+              backgroundColor: AppColors.secondary,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ أثناء استيراد المهام: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // تصدير جدول الحصص الحالي إلى إكسل (نفس الكود السابق)
+  Future<void> _exportScheduleData() async {
     final periods = await LocalStorageService.loadPeriods();
     if (periods.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الجدول فارغ! أضف المهام أولاً لتصديرها.')),
+          const SnackBar(content: Text('جدول الحصص فارغ! أضف الحصص أولاً لتصديرها.')),
         );
       }
       return;
@@ -144,24 +278,38 @@ class _HomeScreenState extends State<HomeScreen>
     await ExcelService.exportSchedule(periods);
   }
 
+  // ⬇️ [إضافة جديدة]: تصدير المهام ⬇️
+  Future<void> _exportTasksData() async {
+    final tasks = await LocalStorageService.loadTasks();
+    if (tasks.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('جدول المهام فارغ! أضف المهام أولاً لتصديرها.')),
+        );
+      }
+      return;
+    }
+    await ExcelService.exportTasks(tasks);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'مدير المهام المجدولة',
+          'مدير المهام والحصص المجدولة',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
-            tooltip: 'استيراد جدول من Excel',
-            onPressed: _handleImportExcel,
+            tooltip: 'استيراد من Excel',
+            onPressed: _showImportSelectionDialog, // ⬅️ [تعديل]: استدعاء النافذة المنبثقة
           ),
           IconButton(
             icon: const Icon(Icons.file_upload_outlined),
-            tooltip: 'تصدير الجدول إلى Excel',
-            onPressed: _handleExportExcel,
+            tooltip: 'تصدير إلى Excel',
+            onPressed: _showExportSelectionDialog, // ⬅️ [تعديل]: استدعاء النافذة المنبثقة
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -187,11 +335,11 @@ class _HomeScreenState extends State<HomeScreen>
           tabs: const [
             Tab(
               icon: Icon(Icons.notifications_active_outlined),
-              text: 'أجراس أعمال متكررة',
+              text: 'أجراس الحصص',
             ),
             Tab(
               icon: Icon(Icons.assignment_outlined),
-              text: 'جدول الإلتزامات والمهام',
+              text: 'جدول الأعمال والمهام',
             ),
           ],
         ),
