@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  // استيراد جدول الحصص من ملف إكسل وتفعيله فوراً
+  // استيراد جدول المهام المجدولة من ملف إكسل وتفعيله فوراً
   Future<void> _handleImportExcel() async {
     try {
       final List<ClassPeriod>? imported = await ExcelService.importSchedule();
@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen>
           }
         }
 
-        // جدولة التنبيهات للحصص المستوردة
+        // جدولة التنبيهات للمهام المستوردة
         for (final period in imported) {
           for (final dayConfig in schoolDays) {
             if (!dayConfig.isEnabled) continue;
@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen>
 
         await LocalStorageService.savePeriods(imported);
 
-        // تحديث واجهة الحصص
+        // تحديث واجهة المهام المجدولة
         _periodsKey.currentState?.loadScheduleData();
 
         if (mounted) {
@@ -130,13 +130,13 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  // تصدير جدول الحصص الحالي إلى إكسل
+  // تصدير جدول المهام الحالي إلى إكسل
   Future<void> _handleExportExcel() async {
     final periods = await LocalStorageService.loadPeriods();
     if (periods.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الجدول فارغ! أضف حصصاً أولاً لتصديرها.')),
+          const SnackBar(content: Text('الجدول فارغ! أضف المهام أولاً لتصديرها.')),
         );
       }
       return;
@@ -149,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'مدير دوام المدرسة',
+          'مدير المهام المجدولة',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
@@ -187,11 +187,11 @@ class _HomeScreenState extends State<HomeScreen>
           tabs: const [
             Tab(
               icon: Icon(Icons.notifications_active_outlined),
-              text: 'أجراس الحصص',
+              text: 'أجراس أعمال متكررة',
             ),
             Tab(
               icon: Icon(Icons.assignment_outlined),
-              text: 'جدول الأعمال والمهام',
+              text: 'جدول الإلتزامات والمهام',
             ),
           ],
         ),
