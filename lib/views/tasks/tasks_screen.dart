@@ -114,18 +114,45 @@ class TasksScreenState extends State<TasksScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 80),
-      itemCount: _tasks.length,
-      itemBuilder: (context, index) {
-        final task = _tasks[index];
-        return TaskTile(
-          task: task,
-          onToggleComplete: (val) => _toggleTaskComplete(task, val),
-          onEdit: () => openAddEditTaskDialog(task),
-          onDelete: () => _deleteTask(task),
-        );
-      },
+    // ⬇️ التعديل: استخدام Stack لوضع زر الفحص فوق قائمة المهام ⬇️
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.only(top: 8, bottom: 80),
+          itemCount: _tasks.length,
+          itemBuilder: (context, index) {
+            final task = _tasks[index];
+            return TaskTile(
+              task: task,
+              onToggleComplete: (val) => _toggleTaskComplete(task, val),
+              onEdit: () => openAddEditTaskDialog(task),
+              onDelete: () => _deleteTask(task),
+            );
+          },
+        ),
+        // ⬇️ زر الفحص المؤقت (يظهر عائماً في أسفل اليمين) ⬇️
+        Positioned(
+          bottom: 20,
+          right: 20,
+          child: FloatingActionButton.extended(
+            backgroundColor: Colors.red.shade700,
+            icon: const Icon(Icons.bug_report, color: Colors.white),
+            label: const Text('فحص الإشعارات', style: TextStyle(color: Colors.white)),
+            onPressed: () async {
+              final pending = await NotificationService().pendingNotifications();
+              debugPrint('========== الإشعارات المجدولة: ${pending.length} ==========');
+              for (var p in pending) {
+                debugPrint('ID: ${p.id} | Title: ${p.title} | Date: ${p.scheduledDate}');
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('يوجد ${pending.length} تنبيه مجدول (راجع الـ Terminal)')),
+                );
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 }
