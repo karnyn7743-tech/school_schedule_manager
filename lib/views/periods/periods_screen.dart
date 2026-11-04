@@ -57,6 +57,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
           dayOfWeek: dayConfig.dayOfWeek,
           hour: period.startHour,
           minute: period.startMinute,
+          isStart: true, // ⬅️ تم التأكيد صراحةً
         );
 
         // منبه نهاية الحصة
@@ -67,6 +68,7 @@ class PeriodsScreenState extends State<PeriodsScreen> {
           dayOfWeek: dayConfig.dayOfWeek,
           hour: period.endHour,
           minute: period.endMinute,
+          isStart: false, // ⬅️ التعديل الجوهري: تشغيل نغمة النهاية
         );
       }
     }
@@ -159,4 +161,3 @@ class PeriodsScreenState extends State<PeriodsScreen> {
     );
   }
 }
-
