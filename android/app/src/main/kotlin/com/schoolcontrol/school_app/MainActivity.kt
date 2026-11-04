@@ -1,4 +1,4 @@
-package com.schoolcontrol.school_app
+package com.tholkarnyn.school_app
 
 import android.os.Build
 import android.os.Bundle
