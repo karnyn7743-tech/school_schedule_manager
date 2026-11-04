@@ -142,7 +142,8 @@ class TasksScreenState extends State<TasksScreen> {
               final pending = await NotificationService().pendingNotifications();
               debugPrint('========== الإشعارات المجدولة: ${pending.length} ==========');
               for (var p in pending) {
-                debugPrint('ID: ${p.id} | Title: ${p.title} | Date: ${p.scheduledDate}');
+                // ⬇️ تم إصلاح الخطأ هنا بحذف scheduledDate غير المدعومة ⬇️
+                debugPrint('ID: ${p.id} | Title: ${p.title}');
               }
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
