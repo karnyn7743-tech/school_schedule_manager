@@ -256,10 +256,8 @@ class NotificationService {
         break;
     }
 
-    // ⬇️ [تعديل جوهري]: تحديد نوع المهمة واختيار القناة والصوت المناسب ⬇️
-    // نعتمد حالياً على وجود كلمة "الطوارئ" في عنوان المهمة.
-    // لاحقاً يمكن تغييرها لحقل مخصص في TaskItem.
-    final isEmergency = task.title.contains('الطوارئ'); 
+    // ⬇️ [تعديل جوهري]: تحديد نوع المهمة واختيار القناة والصوت المناسب بناءً على حقل الطوارئ ⬇️
+    final isEmergency = task.isEmergency; 
     final channelId = isEmergency ? 'school_emergency_channel_v1' : 'school_tasks_channel_v3';
     final channelName = isEmergency ? 'تنبيهات الطوارئ' : 'تنبيهات المهام والأعمال';
     final soundName = isEmergency ? 'deng_er' : 'important_alert';
