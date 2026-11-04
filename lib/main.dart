@@ -26,7 +26,7 @@ class SchoolApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'مدير المهام المجدولة',
+      title: 'مدير مهام المدرسة',
       debugShowCheckedModeBanner: false,
 
       // دعم اللغة العربية والمحاذاة من اليمين لليسار (RTL)
