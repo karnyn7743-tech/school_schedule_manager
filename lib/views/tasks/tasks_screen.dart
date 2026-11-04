@@ -56,7 +56,9 @@ class TasksScreenState extends State<TasksScreen> {
       // Replace an old reminder with the updated reminder, if any.
       await NotificationService().cancelAlarm(result.id);
       if (!result.isCompleted) {
-        await NotificationService().scheduleTaskAlarm(result);
+        // ⬇️ الربط التلقائي: خدمة الإشعارات ستقرأ عنوان المهمة وتختار 
+        // نغمة deng_er إذا كان العنوان يحتوي على "الطوارئ"، أو important_alert للمهام العادية.
+        await NotificationService().scheduleTaskAlarm(result); 
       }
     }
   }
@@ -72,6 +74,7 @@ class TasksScreenState extends State<TasksScreen> {
     if (isDone) {
       await NotificationService().cancelAlarm(task.id);
     } else {
+      // ⬇️ الربط التلقائي يعمل هنا أيضاً عند إعادة تفعيل المهمة
       await NotificationService().scheduleTaskAlarm(task);
     }
   }
@@ -126,4 +129,3 @@ class TasksScreenState extends State<TasksScreen> {
     );
   }
 }
-
