@@ -17,6 +17,7 @@ class _AddEditTaskDialogState extends State<AddEditTaskDialog> {
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
   late TaskRecurrence _recurrence;
+  late bool _isEmergency; // ⬅️ متغير جديد لحالة الطوارئ
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _AddEditTaskDialogState extends State<AddEditTaskDialog> {
     _selectedDate = initialDateTime;
     _selectedTime = TimeOfDay(hour: initialDateTime.hour, minute: initialDateTime.minute);
     _recurrence = widget.task?.recurrence ?? TaskRecurrence.none;
+    _isEmergency = widget.task?.isEmergency ?? false; // ⬅️ تهيئة حالة الطوارئ
   }
 
   @override
@@ -132,6 +134,26 @@ class _AddEditTaskDialogState extends State<AddEditTaskDialog> {
                 if (val != null) setState(() => _recurrence = val);
               },
             ),
+            const SizedBox(height: 10),
+            // ⬇️ [إضافة جديدة]: زر تفعيل مهمة الطوارئ ⬇️
+            SwitchListTile(
+              title: const Text(
+                'مهمة طوارئ',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+              subtitle: const Text(
+                'تفعيل هذا الخيار سيشغل نغمة تنبيه خاصة بالطوارئ.',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 11),
+              ),
+              value: _isEmergency,
+              activeColor: Colors.red,
+              secondary: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+              onChanged: (val) {
+                setState(() => _isEmergency = val);
+              },
+            ),
           ],
         ),
       ),
@@ -164,6 +186,7 @@ class _AddEditTaskDialogState extends State<AddEditTaskDialog> {
               scheduledDateTime: finalDateTime,
               recurrence: _recurrence,
               isCompleted: widget.task?.isCompleted ?? false,
+              isEmergency: _isEmergency, // ⬅️ تمرير قيمة الطوارئ عند الحفظ
             );
 
             Navigator.pop(context, newTask);
@@ -174,4 +197,3 @@ class _AddEditTaskDialogState extends State<AddEditTaskDialog> {
     );
   }
 }
-
