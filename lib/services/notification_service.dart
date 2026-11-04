@@ -126,10 +126,35 @@ class NotificationService {
         playSound: true,
       ),
     );
+    
+    // ⬇️ [إضافة جديدة]: قناة المهام العادية (نغمة important_alert) ⬇️
+    await android.createNotificationChannel(
+      const AndroidNotificationChannel(
+        'school_tasks_channel_v3', // معرف جديد لتجنب مشكلة أندرويد في تغيير صوت القنوات القديمة
+        'تنبيهات المهام والأعمال',
+        description: 'تنبيهات خاصة بالمهام والأنشطة المدرسية',
+        importance: Importance.high,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound('important_alert'),
+      ),
+    );
+    // ⬇️ [إضافة جديدة]: قناة مهام الطوارئ (نغمة deng_er) ⬇️
+    await android.createNotificationChannel(
+      const AndroidNotificationChannel(
+        'school_emergency_channel_v1',
+        'تنبيهات الطوارئ',
+        description: 'تنبيهات خاصة بالمهام الطارئة',
+        importance: Importance.max, // الطوارئ تحتاج أولوية قصوى
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound('deng_er'),
+      ),
+    );
+
+    // القنوات القديمة (مُبقاة لضمان عدم حدوث أخطاء في التحديثات السابقة)
     await android.createNotificationChannel(
       const AndroidNotificationChannel(
         'school_tasks_channel_v2',
-        'تنبيهات المهام والأعمال',
+        'تنبيهات المهام والأعمال (قديم)',
         description: 'تنبيهات خاصة بالمهام والأنشطة المدرسية',
         importance: Importance.high,
         playSound: true,
@@ -231,6 +256,15 @@ class NotificationService {
         break;
     }
 
+    // ⬇️ [تعديل جوهري]: تحديد نوع المهمة واختيار القناة والصوت المناسب ⬇️
+    // نعتمد حالياً على وجود كلمة "الطوارئ" في عنوان المهمة.
+    // لاحقاً يمكن تغييرها لحقل مخصص في TaskItem.
+    final isEmergency = task.title.contains('الطوارئ'); 
+    final channelId = isEmergency ? 'school_emergency_channel_v1' : 'school_tasks_channel_v3';
+    final channelName = isEmergency ? 'تنبيهات الطوارئ' : 'تنبيهات المهام والأعمال';
+    final soundName = isEmergency ? 'deng_er' : 'important_alert';
+    final importance = isEmergency ? Importance.max : Importance.high;
+
     await flutterLocalNotificationsPlugin.zonedSchedule(
       task.id,
       '📋 تذكير بمهمة: ${task.title}',
@@ -238,17 +272,18 @@ class NotificationService {
           ? task.notes!.trim()
           : 'حان موعد إنجاز المهمة المدرسية',
       target,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
-          'school_tasks_channel_v2',
-          'تنبيهات المهام والأعمال',
+          channelId,       // تم التعديل
+          channelName,     // تم التعديل
           channelDescription: 'تنبيهات المهام المدرسية',
-          importance: Importance.high,
+          importance: importance, // تم التعديل
           priority: Priority.high,
+          sound: RawResourceAndroidNotificationSound(soundName), // تم التعديل
           playSound: true,
           enableVibration: true,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(sound: '$soundName.mp3'), // تم التعديل
       ),
       androidScheduleMode: _scheduleMode,
       uiLocalNotificationDateInterpretation:
