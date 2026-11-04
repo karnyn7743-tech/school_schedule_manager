@@ -15,8 +15,7 @@ dependencies:
   
   device_info_plus: ^10.1.2  # لقراءة Android ID
   crypto: ^3.0.3            # لتوليد التجزئة والتشفير
-  shared_preferences: ^2.2.3 # لحفظ حالة التفعيل
-
+  
   # الأيقونات
   cupertino_icons: ^1.0.8
 
