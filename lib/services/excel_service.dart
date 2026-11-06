@@ -159,7 +159,7 @@ class ExcelService {
     }
   }
 
-  // ⬇️ [تم تحسين هذه الدالة لتصبح مرنة جداً في قراءة التواريخ وأسماء الأوراق] ⬇️
+  // استيراد المهام من ورقة 'task_w'
   static Future<List<TaskItem>?> importTasks() async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -201,16 +201,16 @@ class ExcelService {
 
           final String notes = (row.length > 2 && row[2] != null) ? row[2]!.value.toString().trim() : '';
           
-          // قراءة التاريخ بمرونة (سواء كان نصاً أو كائن تاريخ من إكسل)
+          // ⬇️ [إصلاح الخطأ]: قراءة التاريخ بمرونة (تم إزالة فحص DateTime الخاطئ) ⬇️
           DateTime scheduledDate = DateTime.now();
           if (row.length > 3 && row[3] != null) {
             final cellValue = row[3]!.value;
             if (cellValue is DateCellValue) {
+              // إذا كان الإكسل قد حفظ الخلية كتاريخ فعلي
               scheduledDate = cellValue.asDateTimeLocal();
-            } else if (cellValue is DateTime) {
-              scheduledDate = cellValue;
             } else {
-              final dateStr = cellValue.toString().trim();
+              // إذا كانت الخلية نصية (مثل 05/11/2026)
+              final dateStr = cellValue?.toString().trim() ?? '';
               if (dateStr.contains('/')) {
                 final parts = dateStr.split('/');
                 if (parts.length == 3) {
