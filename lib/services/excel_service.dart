@@ -3,18 +3,17 @@ import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:intl/intl.dart'; // ⬅️ [إضافة جديدة]: لتنسيق التاريخ
+import 'package:intl/intl.dart';
 import '../models/class_period_model.dart';
-import '../models/task_item_model.dart'; // ⬅️ [إضافة جديدة]: لاستيراد وتصدير المهام
+import '../models/task_item_model.dart';
 
 class ExcelService {
   // تصدير جدول الحصص إلى ملف إكسل ومشاركته
   static Future<void> exportSchedule(List<ClassPeriod> periods) async {
     final excel = Excel.createExcel();
-    final Sheet sheet = excel['class']; // ⬅️ [تعديل]: توحيد اسم الورقة
+    final Sheet sheet = excel['class'];
     excel.setDefaultSheet('class');
 
-    // ترويسة الأعمدة
     sheet.appendRow([
       TextCellValue('م'),
       TextCellValue('اسم الحصة / النشاط'),
@@ -25,7 +24,6 @@ class ExcelService {
       TextCellValue('هل هي راحة (نعم/لا)'),
     ]);
 
-    // إضافة صفوف الحصص
     for (int i = 0; i < periods.length; i++) {
       final p = periods[i];
       sheet.appendRow([
@@ -39,7 +37,6 @@ class ExcelService {
       ]);
     }
 
-    // حفظ الملف المؤقت وفتحه للمشاركة
     final directory = await getTemporaryDirectory();
     final filePath =
         '${directory.path}/School_Schedule_${DateTime.now().millisecondsSinceEpoch}.xlsx';
@@ -68,15 +65,11 @@ class ExcelService {
       final excel = Excel.decodeBytes(bytes);
 
       final List<ClassPeriod> imported = [];
-      
-      // ⬇️ [تعديل]: البحث عن ورقة 'class' تحديداً بدلاً من الورقة الأولى
-      final sheet = excel.tables['class']; 
+      final sheet = excel.tables['class'];
 
       if (sheet != null) {
-        // توليد معرف أساسي آمن من الوقت الحالي لا يتجاوز نطاق 32-bit
         final int baseId = (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 10000;
 
-        // البدء من الصف الثاني لتخطي الترويسة
         for (int i = 1; i < sheet.maxRows; i++) {
           final row = sheet.rows[i];
           if (row.isEmpty || row.length < 6 || row[1] == null) continue;
@@ -110,13 +103,12 @@ class ExcelService {
     return null;
   }
 
-  // ⬇️ [إضافة جديدة]: تصدير المهام إلى ورقة 'task_w'
+  // تصدير المهام إلى ورقة 'task_w'
   static Future<void> exportTasks(List<TaskItem> tasks) async {
     final excel = Excel.createExcel();
     final Sheet sheet = excel['task_w'];
     excel.setDefaultSheet('task_w');
 
-    // ترويسة الأعمدة (مطابقة للصورة)
     sheet.appendRow([
       TextCellValue('م'),
       TextCellValue('عنوان المهمة'),
@@ -167,7 +159,7 @@ class ExcelService {
     }
   }
 
-  // ⬇️ [إضافة جديدة]: استيراد المهام من ورقة 'task_w'
+  // ⬇️ [تم تحسين هذه الدالة لتصبح مرنة جداً في قراءة التواريخ وأسماء الأوراق] ⬇️
   static Future<List<TaskItem>?> importTasks() async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -180,44 +172,72 @@ class ExcelService {
       final excel = Excel.decodeBytes(bytes);
 
       final List<TaskItem> imported = [];
-      final sheet = excel.tables['task_w'];
+      
+      // البحث عن ورقة العمل بطريقة مرنة (تجاهل حالة الأحرف والمسافات الزائدة)
+      String? targetSheetKey;
+      for (var key in excel.tables.keys) {
+        if (key.trim().toLowerCase() == 'task_w') {
+          targetSheetKey = key;
+          break;
+        }
+      }
+
+      if (targetSheetKey == null) {
+        throw Exception('لم يتم العثور على ورقة عمل باسم task_w. الأوراق الموجودة بالملف هي: ${excel.tables.keys.join(", ")}');
+      }
+
+      final sheet = excel.tables[targetSheetKey];
 
       if (sheet != null) {
         final int baseId = (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 1000000;
 
         for (int i = 1; i < sheet.maxRows; i++) {
           final row = sheet.rows[i];
-          if (row.isEmpty || row.length < 8 || row[1] == null) continue;
+          // نتأكد من وجود عمودين على الأقل (م و عنوان المهمة)
+          if (row.isEmpty || row.length < 2 || row[1] == null) continue;
 
           final String title = row[1]?.value?.toString().trim() ?? '';
           if (title.isEmpty) continue;
 
-          final String notes = row[2]?.value?.toString().trim() ?? '';
+          final String notes = (row.length > 2 && row[2] != null) ? row[2]!.value.toString().trim() : '';
           
-          // قراءة التاريخ (تنسيق dd/MM/yyyy)
-          final String dateStr = row[3]?.value?.toString().trim() ?? '';
-          final dateParts = dateStr.split('/');
-          if (dateParts.length < 3) continue; // تخطي إذا كان التاريخ غير صالح
-          final int day = int.tryParse(dateParts[0]) ?? 1;
-          final int month = int.tryParse(dateParts[1]) ?? 1;
-          final int year = int.tryParse(dateParts[2]) ?? DateTime.now().year;
+          // قراءة التاريخ بمرونة (سواء كان نصاً أو كائن تاريخ من إكسل)
+          DateTime scheduledDate = DateTime.now();
+          if (row.length > 3 && row[3] != null) {
+            final cellValue = row[3]!.value;
+            if (cellValue is DateCellValue) {
+              scheduledDate = cellValue.asDateTimeLocal();
+            } else if (cellValue is DateTime) {
+              scheduledDate = cellValue;
+            } else {
+              final dateStr = cellValue.toString().trim();
+              if (dateStr.contains('/')) {
+                final parts = dateStr.split('/');
+                if (parts.length == 3) {
+                  final d = int.tryParse(parts[0]) ?? 1;
+                  final m = int.tryParse(parts[1]) ?? 1;
+                  final y = int.tryParse(parts[2]) ?? DateTime.now().year;
+                  scheduledDate = DateTime(y, m, d);
+                }
+              } else if (dateStr.contains('-')) {
+                 try { scheduledDate = DateTime.parse(dateStr); } catch (_) {}
+              }
+            }
+          }
 
-          // قراءة الساعة والدقيقة
-          final int hour = int.tryParse(row[4]?.value?.toString() ?? '8') ?? 8;
-          final int minute = int.tryParse(row[5]?.value?.toString() ?? '0') ?? 0;
+          final int hour = (row.length > 4 && row[4] != null) ? (int.tryParse(row[4]!.value.toString()) ?? 8) : 8;
+          final int minute = (row.length > 5 && row[5] != null) ? (int.tryParse(row[5]!.value.toString()) ?? 0) : 0;
 
-          final DateTime scheduledDateTime = DateTime(year, month, day, hour, minute);
+          final DateTime finalDateTime = DateTime(scheduledDate.year, scheduledDate.month, scheduledDate.day, hour, minute);
 
-          // قراءة نمط التكرار
-          final String recStr = row[6]?.value?.toString().trim() ?? 'مرة واحدة';
+          final String recStr = (row.length > 6 && row[6] != null) ? row[6]!.value.toString().trim() : 'مرة واحدة';
           TaskRecurrence rec = TaskRecurrence.none;
           if (recStr.contains('يوم')) rec = TaskRecurrence.daily;
           else if (recStr.contains('أسبوع')) rec = TaskRecurrence.weekly;
           else if (recStr.contains('شهر')) rec = TaskRecurrence.monthly;
           else if (recStr.contains('سنو')) rec = TaskRecurrence.yearly;
 
-          // قراءة حالة الطوارئ
-          final String emergencyStr = row[7]?.value?.toString().trim() ?? 'لا';
+          final String emergencyStr = (row.length > 7 && row[7] != null) ? row[7]!.value.toString().trim() : 'لا';
           final bool isEmergency = emergencyStr == 'نعم' || emergencyStr.toLowerCase() == 'yes';
 
           imported.add(
@@ -225,7 +245,7 @@ class ExcelService {
               id: baseId + i,
               title: title,
               notes: notes.isEmpty ? null : notes,
-              scheduledDateTime: scheduledDateTime,
+              scheduledDateTime: finalDateTime,
               recurrence: rec,
               isCompleted: false,
               isEmergency: isEmergency,
